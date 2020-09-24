@@ -15,6 +15,7 @@ namespace Nml.Improve.Me
 		private readonly ILogger<PdfApplicationDocumentGenerator> _logger;
 		private readonly IPdfGenerator _pdfGenerator;
 
+        //NB This assumes that the parameters passed in are from derived classes which already implement their respective interfaces
 		public PdfApplicationDocumentGenerator(
 			IDataContext dataContext,
 			IPathProvider templatePathProvider,
@@ -23,9 +24,6 @@ namespace Nml.Improve.Me
 			IPdfGenerator pdfGenerator,
 			ILogger<PdfApplicationDocumentGenerator> logger)
 		{
-			//Exception handling in a constructor ==> exceptions thrown in a constructor is generally not good
-			//Rather be handled by separate helper initialization methods
-
             //Initialize the attributes
 			//Check for initializing with null value parameters
 			_dataContext = dataContext ?? throw new ArgumentNullException(nameof(dataContext));
@@ -44,8 +42,7 @@ namespace Nml.Improve.Me
 
 			if (application != null)
 			{
-				//Can use remove method here to remove the / character.
-				//The substring method here may not be the correct method to use
+                //The substring method here may not be the correct method to use
 				if (baseUri.EndsWith("/"))
 					baseUri = baseUri.Substring(baseUri.Length - 1);
 
@@ -78,16 +75,15 @@ namespace Nml.Improve.Me
                         {
                             ReferenceNumber = application.ReferenceNumber,
                             State = application.State.ToDescription(),
-                            FullName = $"{application.Person.FirstName} {application.Person.Surname}", //Check on this convention for string formatting
+                            FullName = $"{application.Person.FirstName} {application.Person.Surname}", 
                             LegalEntity = application.IsLegalEntity ? application.LegalEntity : null,
 
-                            //LINQ
                             PortfolioFunds = application.Products.SelectMany(p => p.Funds),
 
-                            //LINQ Query of a collection
                             PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
                                 .Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
                                 .Sum(),
+
                             AppliedOn = application.Date,
                             SupportEmail = _configuration.SupportEmail,
                             Signature = _configuration.Signature
@@ -100,7 +96,6 @@ namespace Nml.Improve.Me
                     {
                         var templatePath = _templatePathProvider.Get("InReviewApplication");
 
-                        //Check on implementation of this new switch statement syntax in C# 8.0
                         var inReviewMessage = "Your application has been placed in review" +
                                               application.CurrentReview.Reason switch
                                               {
@@ -113,17 +108,19 @@ namespace Nml.Improve.Me
 					
                                               };
 
-                        //Requires some cleanup
                         var inReviewApplicationViewModel = new InReviewApplicationViewModel
                         {
                             ReferenceNumber = application.ReferenceNumber,
                             State = application.State.ToDescription(),
                             FullName = $"{application.Person.FirstName} {application.Person.Surname}",
                             LegalEntity = application.IsLegalEntity ? application.LegalEntity : null,
+
                             PortfolioFunds = application.Products.SelectMany(p => p.Funds),
+
                             PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
                                 .Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
                                 .Sum(),
+
                             InReviewMessage = inReviewMessage,
                             InReviewInformation = application.CurrentReview,
                             AppliedOn = application.Date,
@@ -149,7 +146,9 @@ namespace Nml.Improve.Me
 						HeaderHtml = PdfConstants.Header
 					}
 				};
+
 				var pdf = _pdfGenerator.GenerateFromHtml(view, pdfOptions);
+
 				return pdf.ToBytes();
 			}
 			else
