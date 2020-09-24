@@ -8,10 +8,10 @@ namespace Nml.Improve.Me
 	{
 		//All of these should be ideally private as they are attributes not properties
 		//Should follow a uniform naming convention
-		private readonly IDataContext DataContext;
-		private IPathProvider _templatePathProvider;
-		public IViewGenerator View_Generator;
-		internal readonly IConfiguration _configuration;
+		private readonly IDataContext _dataContext;
+		private readonly IPathProvider _templatePathProvider;
+		public IViewGenerator ViewGenerator;
+		internal readonly IConfiguration Configuration;
 		private readonly ILogger<PdfApplicationDocumentGenerator> _logger;
 		private readonly IPdfGenerator _pdfGenerator;
 
@@ -25,15 +25,13 @@ namespace Nml.Improve.Me
 		{
 			//Exception handling in a constructor ==> exceptions thrown in a constructor is not good
 			//Rather be handled by separate helper initialization methods
-			if (dataContext != null)
-				throw new ArgumentNullException(nameof(dataContext));
-			
-			//Initialize the attributes
+
+            //Initialize the attributes
 			//Check for initializing with null value parameters
-			DataContext = dataContext;
-			_templatePathProvider = templatePathProvider ?? throw new ArgumentNullException("templatePathProvider");
-			View_Generator = viewGenerator;
-			_configuration = configuration;
+			_dataContext = dataContext ?? throw new ArgumentNullException(nameof(dataContext));
+			_templatePathProvider = templatePathProvider ?? throw new ArgumentNullException(nameof(templatePathProvider));
+			ViewGenerator = viewGenerator;
+			Configuration = configuration;
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 			_pdfGenerator = pdfGenerator;
 		}
@@ -42,7 +40,7 @@ namespace Nml.Improve.Me
 		//Add exception handling
 		public byte[] Generate(Guid applicationId, string baseUri)
 		{
-			Application application = DataContext.Applications.Single(app => app.Id == applicationId);
+			Application application = _dataContext.Applications.Single(app => app.Id == applicationId);
 
 			if (application != null)
 			{
@@ -64,11 +62,11 @@ namespace Nml.Improve.Me
 						State = application.State.ToDescription(),
 						FullName = application.Person.FirstName + " " + application.Person.Surname,
 						AppliedOn = application.Date,
-						SupportEmail = _configuration.SupportEmail,
-						Signature = _configuration.Signature
+						SupportEmail = Configuration.SupportEmail,
+						Signature = Configuration.Signature
 					};
 
-					view = View_Generator.GenerateFromPath(string.Format("{0}{1}", baseUri, path), vm);
+					view = ViewGenerator.GenerateFromPath($"{baseUri}{path}", vm);
 				}
 				else if (application.State == ApplicationState.Activated)
 				{
@@ -86,14 +84,14 @@ namespace Nml.Improve.Me
 
 						//LINQ Query of a collection
 						PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
-														.Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
+														.Select(f => (f.Amount - f.Fees) * Configuration.TaxRate)
 														.Sum(),
 						AppliedOn = application.Date,
-						SupportEmail = _configuration.SupportEmail,
-						Signature = _configuration.Signature
+						SupportEmail = Configuration.SupportEmail,
+						Signature = Configuration.Signature
 					};
 
-					view = View_Generator.GenerateFromPath(baseUri + path, vm);
+					view = ViewGenerator.GenerateFromPath(baseUri + path, vm);
 				}
 				else if (application.State == ApplicationState.InReview)
 				{
@@ -113,34 +111,24 @@ namespace Nml.Improve.Me
 										};
 
 					//Requires some cleanup
-					var inReviewApplicationViewModel = new InReviewApplicationViewModel();
-					inReviewApplicationViewModel.ReferenceNumber = application.ReferenceNumber;
-					inReviewApplicationViewModel.State = application.State.ToDescription();
+                    var inReviewApplicationViewModel = new InReviewApplicationViewModel
+                    {
+                        ReferenceNumber = application.ReferenceNumber,
+                        State = application.State.ToDescription(),
+                        FullName = $"{application.Person.FirstName} {application.Person.Surname}",
+                        LegalEntity = application.IsLegalEntity ? application.LegalEntity : null,
+                        PortfolioFunds = application.Products.SelectMany(p => p.Funds),
+                        PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
+                            .Select(f => (f.Amount - f.Fees) * Configuration.TaxRate)
+                            .Sum(),
+                        InReviewMessage = inReviewMessage,
+                        InReviewInformation = application.CurrentReview,
+                        AppliedOn = application.Date,
+                        SupportEmail = Configuration.SupportEmail,
+                        Signature = Configuration.Signature
+                    };
 
-					//Formatting of strings
-					//Could use simpler direct string setting
-					inReviewApplicationViewModel.FullName = string.Format(
-						"{0} {1}",
-						application.Person.FirstName,
-						application.Person.Surname);
-
-					inReviewApplicationViewModel.LegalEntity =
-						application.IsLegalEntity ? application.LegalEntity : null;
-
-					//LINQ Query
-					inReviewApplicationViewModel.PortfolioFunds = application.Products.SelectMany(p => p.Funds);
-
-					//LINQ Query
-					inReviewApplicationViewModel.PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
-						.Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
-						.Sum();
-
-					inReviewApplicationViewModel.InReviewMessage = inReviewMessage;
-					inReviewApplicationViewModel.InReviewInformation = application.CurrentReview;
-					inReviewApplicationViewModel.AppliedOn = application.Date;
-					inReviewApplicationViewModel.SupportEmail = _configuration.SupportEmail;
-					inReviewApplicationViewModel.Signature = _configuration.Signature;
-					view = View_Generator.GenerateFromPath($"{baseUri}{templatePath}", inReviewApplicationViewModel);
+                    view = ViewGenerator.GenerateFromPath($"{baseUri}{templatePath}", inReviewApplicationViewModel);
 				}
 				else
 				{
