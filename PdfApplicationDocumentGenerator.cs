@@ -40,7 +40,7 @@ namespace Nml.Improve.Me
 		//Add exception handling
 		public byte[] Generate(Guid applicationId, string baseUri)
 		{
-			Application application = _dataContext.Applications.Single(app => app.Id == applicationId);
+			var application = _dataContext.Applications.Single(app => app.Id == applicationId);
 
 			if (application != null)
 			{
@@ -51,90 +51,94 @@ namespace Nml.Improve.Me
 
 				var view = "";
 
-				if (application.State == ApplicationState.Pending)
-				{
-					var path = _templatePathProvider.Get("PendingApplication");
-
-					var vm = new PendingApplicationViewModel
-					{
-						ReferenceNumber = application.ReferenceNumber,
-						State = application.State.ToDescription(),
-						FullName = application.Person.FirstName + " " + application.Person.Surname,
-						AppliedOn = application.Date,
-						SupportEmail = _configuration.SupportEmail,
-						Signature = _configuration.Signature
-					};
-
-					view = _viewGenerator.GenerateFromPath($"{baseUri}{path}", vm);
-				}
-				else if (application.State == ApplicationState.Activated)
-				{
-					var path = _templatePathProvider.Get("ActivatedApplication");
-
-					var vm = new ActivatedApplicationViewModel
-					{
-						ReferenceNumber = application.ReferenceNumber,
-						State = application.State.ToDescription(),
-						FullName = $"{application.Person.FirstName} {application.Person.Surname}", //Check on this convention for string formatting
-						LegalEntity = application.IsLegalEntity ? application.LegalEntity : null,
-
-						//LINQ
-						PortfolioFunds = application.Products.SelectMany(p => p.Funds),
-
-						//LINQ Query of a collection
-						PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
-														.Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
-														.Sum(),
-						AppliedOn = application.Date,
-						SupportEmail = _configuration.SupportEmail,
-						Signature = _configuration.Signature
-					};
-
-					view = _viewGenerator.GenerateFromPath(baseUri + path, vm);
-				}
-				else if (application.State == ApplicationState.InReview)
-				{
-					var templatePath = _templatePathProvider.Get("InReviewApplication");
-
-					//Check on implementation of this new switch statement syntax in C# 8.0
-					var inReviewMessage = "Your application has been placed in review" +
-										application.CurrentReview.Reason switch
-										{
-											{ } reason when reason.Contains("address") =>
-												" pending outstanding address verification for FICA purposes.",
-											{ } reason when reason.Contains("bank") =>
-												" pending outstanding bank account verification.",
-											_ =>
-												" because of suspicious account behaviour. Please contact support ASAP."
-					
-										};
-
-					//Requires some cleanup
-                    var inReviewApplicationViewModel = new InReviewApplicationViewModel
+				switch (application.State)
+                {
+                    case ApplicationState.Pending:
                     {
-                        ReferenceNumber = application.ReferenceNumber,
-                        State = application.State.ToDescription(),
-                        FullName = $"{application.Person.FirstName} {application.Person.Surname}",
-                        LegalEntity = application.IsLegalEntity ? application.LegalEntity : null,
-                        PortfolioFunds = application.Products.SelectMany(p => p.Funds),
-                        PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
-                            .Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
-                            .Sum(),
-                        InReviewMessage = inReviewMessage,
-                        InReviewInformation = application.CurrentReview,
-                        AppliedOn = application.Date,
-                        SupportEmail = _configuration.SupportEmail,
-                        Signature = _configuration.Signature
-                    };
+                        var path = _templatePathProvider.Get("PendingApplication");
 
-                    view = _viewGenerator.GenerateFromPath($"{baseUri}{templatePath}", inReviewApplicationViewModel);
-				}
-				else
-				{
-					_logger.LogWarning(
-						$"The application is in state '{application.State}' and no valid document can be generated for it.");
-					return null;
-				}
+                        var vm = new PendingApplicationViewModel
+                        {
+                            ReferenceNumber = application.ReferenceNumber,
+                            State = application.State.ToDescription(),
+                            FullName = application.Person.FirstName + " " + application.Person.Surname,
+                            AppliedOn = application.Date,
+                            SupportEmail = _configuration.SupportEmail,
+                            Signature = _configuration.Signature
+                        };
+
+                        view = _viewGenerator.GenerateFromPath($"{baseUri}{path}", vm);
+                        break;
+                    }
+                    case ApplicationState.Activated:
+                    {
+                        var path = _templatePathProvider.Get("ActivatedApplication");
+
+                        var vm = new ActivatedApplicationViewModel
+                        {
+                            ReferenceNumber = application.ReferenceNumber,
+                            State = application.State.ToDescription(),
+                            FullName = $"{application.Person.FirstName} {application.Person.Surname}", //Check on this convention for string formatting
+                            LegalEntity = application.IsLegalEntity ? application.LegalEntity : null,
+
+                            //LINQ
+                            PortfolioFunds = application.Products.SelectMany(p => p.Funds),
+
+                            //LINQ Query of a collection
+                            PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
+                                .Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
+                                .Sum(),
+                            AppliedOn = application.Date,
+                            SupportEmail = _configuration.SupportEmail,
+                            Signature = _configuration.Signature
+                        };
+
+                        view = _viewGenerator.GenerateFromPath(baseUri + path, vm);
+                        break;
+                    }
+                    case ApplicationState.InReview:
+                    {
+                        var templatePath = _templatePathProvider.Get("InReviewApplication");
+
+                        //Check on implementation of this new switch statement syntax in C# 8.0
+                        var inReviewMessage = "Your application has been placed in review" +
+                                              application.CurrentReview.Reason switch
+                                              {
+                                                  { } reason when reason.Contains("address") =>
+                                                      " pending outstanding address verification for FICA purposes.",
+                                                  { } reason when reason.Contains("bank") =>
+                                                      " pending outstanding bank account verification.",
+                                                  _ =>
+                                                      " because of suspicious account behaviour. Please contact support ASAP."
+					
+                                              };
+
+                        //Requires some cleanup
+                        var inReviewApplicationViewModel = new InReviewApplicationViewModel
+                        {
+                            ReferenceNumber = application.ReferenceNumber,
+                            State = application.State.ToDescription(),
+                            FullName = $"{application.Person.FirstName} {application.Person.Surname}",
+                            LegalEntity = application.IsLegalEntity ? application.LegalEntity : null,
+                            PortfolioFunds = application.Products.SelectMany(p => p.Funds),
+                            PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
+                                .Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
+                                .Sum(),
+                            InReviewMessage = inReviewMessage,
+                            InReviewInformation = application.CurrentReview,
+                            AppliedOn = application.Date,
+                            SupportEmail = _configuration.SupportEmail,
+                            Signature = _configuration.Signature
+                        };
+
+                        view = _viewGenerator.GenerateFromPath($"{baseUri}{templatePath}", inReviewApplicationViewModel);
+                        break;
+                    }
+                    default:
+                        _logger.LogWarning(
+                            $"The application is in state '{application.State}' and no valid document can be generated for it.");
+                        return null;
+                }
 
 				var pdfOptions = new PdfOptions
 				{
