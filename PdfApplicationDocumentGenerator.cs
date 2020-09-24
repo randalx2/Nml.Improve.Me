@@ -6,6 +6,8 @@ namespace Nml.Improve.Me
 {
 	public class PdfApplicationDocumentGenerator : IApplicationDocumentGenerator
 	{
+		//All of these should be ideally private as they are attributes not properties
+		//Should follow a uniform naming convention
 		private readonly IDataContext DataContext;
 		private IPathProvider _templatePathProvider;
 		public IViewGenerator View_Generator;
@@ -21,9 +23,13 @@ namespace Nml.Improve.Me
 			IPdfGenerator pdfGenerator,
 			ILogger<PdfApplicationDocumentGenerator> logger)
 		{
+			//Exception handling in a constructor ==> exceptions thrown in a constructor is not good
+			//Rather be handled by separate helper initialization methods
 			if (dataContext != null)
 				throw new ArgumentNullException(nameof(dataContext));
 			
+			//Initialize the attributes
+			//Check for initializing with null value parameters
 			DataContext = dataContext;
 			_templatePathProvider = templatePathProvider ?? throw new ArgumentNullException("templatePathProvider");
 			View_Generator = viewGenerator;
@@ -32,21 +38,26 @@ namespace Nml.Improve.Me
 			_pdfGenerator = pdfGenerator;
 		}
 		
+		//Implementing the interface method
+		//Add exception handling
 		public byte[] Generate(Guid applicationId, string baseUri)
 		{
 			Application application = DataContext.Applications.Single(app => app.Id == applicationId);
 
 			if (application != null)
 			{
-
+				//Can use remove method here to remove the / character.
+				//The substring method here may not be the correct method to use
 				if (baseUri.EndsWith("/"))
 					baseUri = baseUri.Substring(baseUri.Length - 1);
 
+				//not initialized
 				string view;
 
 				if (application.State == ApplicationState.Pending)
 				{
 					string path = _templatePathProvider.Get("PendingApplication");
+
 					PendingApplicationViewModel vm = new PendingApplicationViewModel
 					{
 						ReferenceNumber = application.ReferenceNumber,
@@ -56,18 +67,24 @@ namespace Nml.Improve.Me
 						SupportEmail = _configuration.SupportEmail,
 						Signature = _configuration.Signature
 					};
+
 					view = View_Generator.GenerateFromPath(string.Format("{0}{1}", baseUri, path), vm);
 				}
 				else if (application.State == ApplicationState.Activated)
 				{
 					string path = _templatePathProvider.Get("ActivatedApplication");
+
 					ActivatedApplicationViewModel vm = new ActivatedApplicationViewModel
 					{
 						ReferenceNumber = application.ReferenceNumber,
 						State = application.State.ToDescription(),
-						FullName = $"{application.Person.FirstName} {application.Person.Surname}",
+						FullName = $"{application.Person.FirstName} {application.Person.Surname}", //Check on this convention for string formatting
 						LegalEntity = application.IsLegalEntity ? application.LegalEntity : null,
+
+						//LINQ
 						PortfolioFunds = application.Products.SelectMany(p => p.Funds),
+
+						//LINQ Query of a collection
 						PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
 														.Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
 														.Sum(),
@@ -75,11 +92,14 @@ namespace Nml.Improve.Me
 						SupportEmail = _configuration.SupportEmail,
 						Signature = _configuration.Signature
 					};
+
 					view = View_Generator.GenerateFromPath(baseUri + path, vm);
 				}
 				else if (application.State == ApplicationState.InReview)
 				{
 					var templatePath = _templatePathProvider.Get("InReviewApplication");
+
+					//Check on implementation of this new switch statement syntax in C# 8.0
 					var inReviewMessage = "Your application has been placed in review" +
 										application.CurrentReview.Reason switch
 										{
@@ -89,20 +109,32 @@ namespace Nml.Improve.Me
 												" pending outstanding bank account verification.",
 											_ =>
 												" because of suspicious account behaviour. Please contact support ASAP."
+					
 										};
+
+					//Requires some cleanup
 					var inReviewApplicationViewModel = new InReviewApplicationViewModel();
 					inReviewApplicationViewModel.ReferenceNumber = application.ReferenceNumber;
 					inReviewApplicationViewModel.State = application.State.ToDescription();
+
+					//Formatting of strings
+					//Could use simpler direct string setting
 					inReviewApplicationViewModel.FullName = string.Format(
 						"{0} {1}",
 						application.Person.FirstName,
 						application.Person.Surname);
+
 					inReviewApplicationViewModel.LegalEntity =
 						application.IsLegalEntity ? application.LegalEntity : null;
+
+					//LINQ Query
 					inReviewApplicationViewModel.PortfolioFunds = application.Products.SelectMany(p => p.Funds);
+
+					//LINQ Query
 					inReviewApplicationViewModel.PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
 						.Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
 						.Sum();
+
 					inReviewApplicationViewModel.InReviewMessage = inReviewMessage;
 					inReviewApplicationViewModel.InReviewInformation = application.CurrentReview;
 					inReviewApplicationViewModel.AppliedOn = application.Date;
