@@ -10,8 +10,8 @@ namespace Nml.Improve.Me
 		//Should follow a uniform naming convention
 		private readonly IDataContext _dataContext;
 		private readonly IPathProvider _templatePathProvider;
-		public IViewGenerator ViewGenerator;
-		internal readonly IConfiguration Configuration;
+        private readonly IViewGenerator _viewGenerator;
+		private readonly IConfiguration _configuration;
 		private readonly ILogger<PdfApplicationDocumentGenerator> _logger;
 		private readonly IPdfGenerator _pdfGenerator;
 
@@ -23,15 +23,15 @@ namespace Nml.Improve.Me
 			IPdfGenerator pdfGenerator,
 			ILogger<PdfApplicationDocumentGenerator> logger)
 		{
-			//Exception handling in a constructor ==> exceptions thrown in a constructor is not good
+			//Exception handling in a constructor ==> exceptions thrown in a constructor is generally not good
 			//Rather be handled by separate helper initialization methods
 
             //Initialize the attributes
 			//Check for initializing with null value parameters
 			_dataContext = dataContext ?? throw new ArgumentNullException(nameof(dataContext));
 			_templatePathProvider = templatePathProvider ?? throw new ArgumentNullException(nameof(templatePathProvider));
-			ViewGenerator = viewGenerator;
-			Configuration = configuration;
+			_viewGenerator = viewGenerator;
+			_configuration = configuration;
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 			_pdfGenerator = pdfGenerator;
 		}
@@ -49,30 +49,29 @@ namespace Nml.Improve.Me
 				if (baseUri.EndsWith("/"))
 					baseUri = baseUri.Substring(baseUri.Length - 1);
 
-				//not initialized
-				string view;
+				var view = "";
 
 				if (application.State == ApplicationState.Pending)
 				{
-					string path = _templatePathProvider.Get("PendingApplication");
+					var path = _templatePathProvider.Get("PendingApplication");
 
-					PendingApplicationViewModel vm = new PendingApplicationViewModel
+					var vm = new PendingApplicationViewModel
 					{
 						ReferenceNumber = application.ReferenceNumber,
 						State = application.State.ToDescription(),
 						FullName = application.Person.FirstName + " " + application.Person.Surname,
 						AppliedOn = application.Date,
-						SupportEmail = Configuration.SupportEmail,
-						Signature = Configuration.Signature
+						SupportEmail = _configuration.SupportEmail,
+						Signature = _configuration.Signature
 					};
 
-					view = ViewGenerator.GenerateFromPath($"{baseUri}{path}", vm);
+					view = _viewGenerator.GenerateFromPath($"{baseUri}{path}", vm);
 				}
 				else if (application.State == ApplicationState.Activated)
 				{
-					string path = _templatePathProvider.Get("ActivatedApplication");
+					var path = _templatePathProvider.Get("ActivatedApplication");
 
-					ActivatedApplicationViewModel vm = new ActivatedApplicationViewModel
+					var vm = new ActivatedApplicationViewModel
 					{
 						ReferenceNumber = application.ReferenceNumber,
 						State = application.State.ToDescription(),
@@ -84,14 +83,14 @@ namespace Nml.Improve.Me
 
 						//LINQ Query of a collection
 						PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
-														.Select(f => (f.Amount - f.Fees) * Configuration.TaxRate)
+														.Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
 														.Sum(),
 						AppliedOn = application.Date,
-						SupportEmail = Configuration.SupportEmail,
-						Signature = Configuration.Signature
+						SupportEmail = _configuration.SupportEmail,
+						Signature = _configuration.Signature
 					};
 
-					view = ViewGenerator.GenerateFromPath(baseUri + path, vm);
+					view = _viewGenerator.GenerateFromPath(baseUri + path, vm);
 				}
 				else if (application.State == ApplicationState.InReview)
 				{
@@ -119,16 +118,16 @@ namespace Nml.Improve.Me
                         LegalEntity = application.IsLegalEntity ? application.LegalEntity : null,
                         PortfolioFunds = application.Products.SelectMany(p => p.Funds),
                         PortfolioTotalAmount = application.Products.SelectMany(p => p.Funds)
-                            .Select(f => (f.Amount - f.Fees) * Configuration.TaxRate)
+                            .Select(f => (f.Amount - f.Fees) * _configuration.TaxRate)
                             .Sum(),
                         InReviewMessage = inReviewMessage,
                         InReviewInformation = application.CurrentReview,
                         AppliedOn = application.Date,
-                        SupportEmail = Configuration.SupportEmail,
-                        Signature = Configuration.Signature
+                        SupportEmail = _configuration.SupportEmail,
+                        Signature = _configuration.Signature
                     };
 
-                    view = ViewGenerator.GenerateFromPath($"{baseUri}{templatePath}", inReviewApplicationViewModel);
+                    view = _viewGenerator.GenerateFromPath($"{baseUri}{templatePath}", inReviewApplicationViewModel);
 				}
 				else
 				{
