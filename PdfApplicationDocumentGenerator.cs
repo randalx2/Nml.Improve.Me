@@ -44,16 +44,38 @@ namespace Nml.Improve.Me
 			if (application != null)
 			{
                 //The substring method here may not be the correct method to use
-				if (baseUri.EndsWith("/"))
-					baseUri = baseUri.Substring(baseUri.Length - 1);
+                //Normally a good base Uri ends with a trailing slash
+                //Currently all this would do is return the "/" character as a substring
 
-				var view = "";
+                /*********************************************************************************
+                if (baseUri.EndsWith("/"))
+					baseUri = baseUri.Substring(baseUri.Length - 1);
+                **********************************************************************************/
+
+                //Check for a bad baseUri
+                if (!baseUri.EndsWith("/"))
+                {
+                    //append the trailing slash character
+                    baseUri += "/";
+
+                    //NB That this would work assuming that _templatePathProvider.Get() would return a file string path 
+                    //which DOES NOT start with a "/" character
+                }
+
+                var view = "";
 
 				switch (application.State)
                 {
                     case ApplicationState.Pending:
                     {
                         var path = _templatePathProvider.Get("PendingApplication");
+
+                        //Due to the convention used above for the base Uri, we cannot allow any paths to start with a "/" character
+                        //Ideally this check should be done in the class which implements IPathProvider's Get() method but is added here as an extra check.
+                        if (path.StartsWith("/") && path.Length > 1)
+                        {
+                            path = path.Substring(1);
+                        }
 
                         var vm = new PendingApplicationViewModel
                         {
@@ -71,6 +93,13 @@ namespace Nml.Improve.Me
                     case ApplicationState.Activated:
                     {
                         var path = _templatePathProvider.Get("ActivatedApplication");
+
+                        //Due to the convention used above for the base Uri, we cannot allow any paths to start with a "/" character
+                        //Ideally this check should be done in the class which implements IPathProvider's Get() method but is added here as an extra check.
+                        if (path.StartsWith("/") && path.Length > 1)
+                        {
+                            path = path.Substring(1);
+                        }
 
                         var vm = new ActivatedApplicationViewModel
                         {
@@ -96,6 +125,13 @@ namespace Nml.Improve.Me
                     case ApplicationState.InReview:
                     {
                         var templatePath = _templatePathProvider.Get("InReviewApplication");
+
+                        //Due to the convention used above for the base Uri, we cannot allow any paths to start with a "/" character
+                        //Ideally this check should be done in the class which implements IPathProvider's Get() method but is added here as an extra check.
+                        if (templatePath.StartsWith("/") && templatePath.Length > 1)
+                        {
+                            templatePath = templatePath.Substring(1);
+                        }
 
                         var inReviewMessage = "Your application has been placed in review" +
                                               application.CurrentReview.Reason switch
