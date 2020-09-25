@@ -16,6 +16,7 @@ namespace Nml.Improve.Me
 		private readonly IPdfGenerator _pdfGenerator;
 
         //NB This assumes that the parameters passed in are from derived classes which already implement their respective interfaces
+        //Achieves abstraction and DI
 		public PdfApplicationDocumentGenerator(
 			IDataContext dataContext,
 			IPathProvider templatePathProvider,
