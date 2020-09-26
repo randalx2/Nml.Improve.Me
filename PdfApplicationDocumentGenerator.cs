@@ -29,10 +29,10 @@ namespace Nml.Improve.Me
 			//Check for initializing with null value parameters
 			_dataContext = dataContext ?? throw new ArgumentNullException(nameof(dataContext));
 			_templatePathProvider = templatePathProvider ?? throw new ArgumentNullException(nameof(templatePathProvider));
-			_viewGenerator = viewGenerator;
-			_configuration = configuration;
+			_viewGenerator = viewGenerator ?? throw new ArgumentNullException(nameof(viewGenerator));
+			_configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-			_pdfGenerator = pdfGenerator;
+			_pdfGenerator = pdfGenerator ?? throw new ArgumentNullException(nameof(pdfGenerator));
 		}
 		
 		//Implementing the interface method
