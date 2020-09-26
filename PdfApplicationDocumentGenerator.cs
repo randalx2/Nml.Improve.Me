@@ -228,13 +228,10 @@ namespace Nml.Improve.Me
                 }
 				
 			}
-			else
-			{
-				
-				_logger.LogWarning(
-					$"No application found for id '{applicationId}'");
-				return null;
-			}
-		}
+
+            _logger.LogWarning(
+                $"No application found for id '{applicationId}' or an unexpected error was encountered");
+            return null;
+        }
 	}
 }
