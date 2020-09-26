@@ -88,7 +88,17 @@ namespace Nml.Improve.Me
                             Signature = _configuration.Signature
                         };
 
-                        view = _viewGenerator.GenerateFromPath($"{baseUri}{path}", vm);
+                        //Add some exception handling before generating the view as an extra measure
+                        try
+                        {
+                            view = _viewGenerator.GenerateFromPath($"{baseUri}{path}", vm);
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogWarning("Error generating view: " + e.Message);
+                            throw;
+                        }
+
                         break;
                     }
                     case ApplicationState.Activated:
@@ -120,7 +130,17 @@ namespace Nml.Improve.Me
                             Signature = _configuration.Signature
                         };
 
-                        view = _viewGenerator.GenerateFromPath(baseUri + path, vm);
+                        //Add some exception handling before generating the view as an extra measure
+                        try
+                        {
+                            view = _viewGenerator.GenerateFromPath(baseUri + path, vm);
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogWarning("Error generating view: " + e.Message);
+                            throw;
+                        }
+
                         break;
                     }
                     case ApplicationState.InReview:
@@ -166,7 +186,17 @@ namespace Nml.Improve.Me
                             Signature = _configuration.Signature
                         };
 
-                        view = _viewGenerator.GenerateFromPath($"{baseUri}{templatePath}", inReviewApplicationViewModel);
+                        //Add some exception handling before generating the view as an extra measure
+                        try
+                        {
+                            view = _viewGenerator.GenerateFromPath($"{baseUri}{templatePath}", inReviewApplicationViewModel);
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogWarning("Error generating view: " + e.Message);
+                            throw;
+                        }
+
                         break;
                     }
                     default:
@@ -185,9 +215,18 @@ namespace Nml.Improve.Me
 					}
 				};
 
-				var pdf = _pdfGenerator.GenerateFromHtml(view, pdfOptions);
-
-				return pdf.ToBytes();
+				//Add exception handling before generating the pdf
+                try
+                {
+                    var pdf = _pdfGenerator.GenerateFromHtml(view, pdfOptions);
+                    return pdf.ToBytes();
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning("Error generating pdf: " + e.Message);
+                    throw;
+                }
+				
 			}
 			else
 			{
