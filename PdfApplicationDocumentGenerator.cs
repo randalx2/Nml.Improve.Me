@@ -62,6 +62,7 @@ namespace Nml.Improve.Me
                     //which DOES NOT start with a "/" character
                 }
 
+                //Initialize string variable
                 var view = "";
 
 				switch (application.State)
